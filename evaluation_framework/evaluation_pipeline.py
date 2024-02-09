@@ -32,18 +32,15 @@ MATCHING_SCHEME = {
 FUZZY_MATCH_CORRUPTION_AMOUNT = 0.75  # this percentage of columns will be corrupted
 USE_PARETO_DIST = True  # whether to sample degrees (nbr of corruptions) from a Pareto distribution
 # filename will have dataset size, match perc, corruption perc
-OUTPUT_FILE_PATH = (
+RAW_FILE_PATH = (
     f"eval_data/raw-{int(DATASET_SIZE*2)}-{str(1 - MATCHING_SCHEME['non']).replace('.', '_')}"
     f"-{str(FUZZY_MATCH_CORRUPTION_AMOUNT).replace('.', '_')}.parquet"
 )
 
-INPUT_FILE_PATH = "eval_data/raw-1000-1_0-0_5.parquet"
 TRAIN_TEST_RATIO = 0.7
-OUTPUT_FILE_PATH_TRAIN = INPUT_FILE_PATH.replace("raw", "train").replace("parquet", "csv")
-OUTPUT_FILE_PATH_TEST = INPUT_FILE_PATH.replace("raw", "test").replace("parquet", "csv")
+TRAIN_FILE_PATH = RAW_FILE_PATH.replace("raw", "train").replace("parquet", "csv")
+TEST_FILE_PATH = RAW_FILE_PATH.replace("raw", "test").replace("parquet", "csv")
 
-INPUT_DATA_PATH_TRAIN = "eval_data/train-1000-1_0-0_5.csv"
-INPUT_DATA_PATH_TEST = "eval_data/test-1000-1_0-0_5.csv"
 TRACK_MLFLOW_EXPERIMENT = True
 DASHBOARD_DATA_PATH = "dashboard/data/"
 CLASSIFIER_RESULT_COL = "model_score_category"
@@ -59,7 +56,17 @@ a, b, g = generate_and_corrupt(
 )
 
 # combine the datasets and save the result
-generated_graph_data = combine_datasets_and_save_to_parquet(ds=a + b, out_path=OUTPUT_FILE_PATH)
+generated_graph_data = combine_datasets_and_save_to_parquet(ds=a + b, out_path=RAW_FILE_PATH)
+
+# save node data for the dashboard
+node_data_for_dashboard = dict(zip(
+    generated_graph_data.get_column('index'),
+    generated_graph_data.with_columns(
+        pl.col(pl.Date).dt.strftime('%Y-%m-%d')
+    ).drop(['index', 'id']).to_dicts()
+))
+with open("dashboard/data/node_data.json", "w") as f:
+    json.dump(node_data_for_dashboard, f)
 
 if g is not None:
     # compare network attributes between the generated data and a randomly generated one
@@ -71,18 +78,18 @@ if g is not None:
 
 # TODO: wrap this in a Dagster make_features op
 make_features(
-    df=INPUT_FILE_PATH,
+    df=RAW_FILE_PATH,
     train_test_ratio=TRAIN_TEST_RATIO,
-    output_file_path_train=OUTPUT_FILE_PATH_TRAIN,
-    output_file_path_test=OUTPUT_FILE_PATH_TEST,
+    output_file_path_train=TRAIN_FILE_PATH,
+    output_file_path_test=TEST_FILE_PATH,
 )
 # TODO: end wrapper for Dagster make_features op
 
 
-if os.path.isfile(INPUT_DATA_PATH_TRAIN) and os.path.isfile(INPUT_DATA_PATH_TEST):
+if os.path.isfile(TRAIN_FILE_PATH) and os.path.isfile(TEST_FILE_PATH):
     ID_COLNAME_PREFIX = "index_"
-    train = pd.read_csv(INPUT_DATA_PATH_TRAIN).set_index(['index_1', 'index_2'])
-    test = pd.read_csv(INPUT_DATA_PATH_TEST).set_index(['index_1', 'index_2'])
+    train = pd.read_csv(TRAIN_FILE_PATH).set_index(['index_1', 'index_2'])
+    test = pd.read_csv(TEST_FILE_PATH).set_index(['index_1', 'index_2'])
     # recordlinkage expects labels to be a pandas MultiIndex, and features to be a dataframe
     train_x = train.drop('true_label', axis=1)
     train_y = train.loc[train['true_label'] == 1, 'true_label'].index

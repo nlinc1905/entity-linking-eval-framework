@@ -25,6 +25,13 @@ CATEGORY_TO_COLOR_MAP = {
 }
 
 
+def prepare_node_for_graph(node_id: int, all_node_data: dict):
+    """Creates a Node instance from the given node_id and node data dict."""
+    node_properties = list(all_node_data[str(node_id)])
+    node_properties_dict = {k: all_node_data[str(node_id)][k] for k in node_properties}
+    return Node(_id=node_id, _label=str(node_id), _classes=None, **node_properties_dict)
+
+
 # ingest the source data for this dashboard, which is the output of the evaluation_pipeline.py
 # this data should be for the test set only
 test_x = pl.read_parquet(f"{DASHBOARD_DATA_PATH}scored_data.parquet")
@@ -34,6 +41,8 @@ rank_table_df = pl.read_parquet(f"{DASHBOARD_DATA_PATH}ranks.parquet")
 with open(f"{DASHBOARD_DATA_PATH}scores.json", "r") as f:
     scores = json.load(f)
 conf_matrix = np.load(f"{DASHBOARD_DATA_PATH}conf_matrix.npy")
+with open(f"{DASHBOARD_DATA_PATH}node_data.json", "r") as f:
+    node_data = json.load(f)
 
 # convert polars dataframes to pandas MultiIndex where needed
 tps = test_x.filter(pl.col(CLASSIFIER_RESULT_COL) == 'TP').select([CLASSIFIER_RESULT_COL, f'{ID_COLNAME_PREFIX}1', f'{ID_COLNAME_PREFIX}2']).to_pandas().set_index([f'{ID_COLNAME_PREFIX}1', f'{ID_COLNAME_PREFIX}2']).index
@@ -45,7 +54,10 @@ preds = preds.to_pandas().set_index([f'{ID_COLNAME_PREFIX}1', f'{ID_COLNAME_PREF
 rank_table_df = rank_table_df.to_pandas()
 
 # create node and links objects for the graph
-nodes = {rr: Node(_id=rr, _label=str(rr), _classes=None, some_other_node_feature="test") for r in set(test_x.index) for rr in r}  # {id: N}
+nodes = {
+    rr: prepare_node_for_graph(node_id=rr, all_node_data=node_data)
+    for r in set(test_x.index) for rr in r
+}  # {id: N}
 links = create_links_dict(idx=test_y, nodes_dict=nodes)  # {(node_id1, node_id2): L}
 
 # create predicted links for the graph

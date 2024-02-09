@@ -103,6 +103,12 @@ def corrupt_entities(entities: t.List[Entity], perc_to_corrupt: float) -> t.List
     Corrupts the provided entities by randomly changing perc_to_corrupt percentage of the entities'
     properties.  Possible corruptions are defined in entities.mutators.py.
 
+    The entity ID cannot be mutated.  However, if it is never changed, the model can simply learn
+    that when ANY field is an exact match, predict a match, and it will not have false positives.
+    To avoid this, we change the entity ID a fraction of the time when the mutation type ==
+    COMPLETELY_NEW.  That is, when a field is replaced by a new value, the entity ID should have
+    a probability of changing too.
+
     :param entities: The entities to corrupt
     :param perc_to_corrupt: Which percentage of attributes to corrupt
     """
@@ -219,7 +225,7 @@ def generate_and_corrupt(
                 if is_exact_match:
                     ds_b.append(ent)
                 else:
-                    corr = corrupt_entities([ent], perc_to_corrupt=fuzzy_match_corruption_perc)
+                    corr = corrupt_entities(entities=[ent], perc_to_corrupt=fuzzy_match_corruption_perc)
                     ds_b += corr
     else:
         g = None
