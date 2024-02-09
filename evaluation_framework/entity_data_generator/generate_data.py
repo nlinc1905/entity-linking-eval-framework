@@ -103,12 +103,6 @@ def corrupt_entities(entities: t.List[Entity], perc_to_corrupt: float) -> t.List
     Corrupts the provided entities by randomly changing perc_to_corrupt percentage of the entities'
     properties.  Possible corruptions are defined in entities.mutators.py.
 
-    The entity ID cannot be mutated.  However, if it is never changed, the model can simply learn
-    that when ANY field is an exact match, predict a match, and it will not have false positives.
-    To avoid this, we change the entity ID a fraction of the time when the mutation type ==
-    COMPLETELY_NEW.  That is, when a field is replaced by a new value, the entity ID should have
-    a probability of changing too.
-
     :param entities: The entities to corrupt
     :param perc_to_corrupt: Which percentage of attributes to corrupt
     """
@@ -149,6 +143,46 @@ def corrupt_entities(entities: t.List[Entity], perc_to_corrupt: float) -> t.List
         corrupted.append(corrupted_ent)
 
     return corrupted
+
+
+def mingle_new_entities(
+    entities_a: t.List[Entity],
+    entities_b: t.List[Entity],
+    perc_to_mingle: float
+) -> t.List[Entity]:
+    """
+    The entity ID cannot be mutated.  However, if it is never changed, the model can simply learn
+    that when ANY field is an exact match, predict a match, and it will not have false positives.
+    To avoid this, this function randomly chooses some of the attributes of non-matched entities
+    from dataset B, and replaces them with attributes from dataset A.  This ensures that there are
+    entities with identical features to the originals, but they are considered different
+    entities.  This function can be thought of as the opposite of the corruption function, which
+    mainly serves to generate false negative candidates.
+
+    :param entities_a: The entities in dataset A
+    :param entities_b: The entities whose attributes will be mingled with A
+    :param perc_to_mingle: Which percentage of attributes to copy
+    """
+    mutable_properties = [p for p in list(entities_a[0].__dict__) if p[0] != '_']
+    nbr_properties_to_mingle = int(perc_to_mingle * len(mutable_properties))
+    # print(f"Mingling {nbr_properties_to_mingle} properties ({perc_to_mingle}%) per entity.")
+
+    mingled = []
+    for ent in entities_b:
+
+        # randomly choose which properties to mingle
+        properties_to_mingle = random.sample(mutable_properties, k=nbr_properties_to_mingle)
+
+        # randomly choose an entity from dataset A whose properties will be copied
+        prototype = random.sample(entities_a, k=1)[0]
+
+        # the object is modified in place
+        mingled_ent = copy(ent)
+        for p in properties_to_mingle:
+            mingled_ent.__dict__[p] = prototype.__dict__[p]
+        mingled.append(mingled_ent)
+
+    return mingled
 
 
 def generate_and_corrupt(
@@ -207,6 +241,7 @@ def generate_and_corrupt(
     entity_gen = entity_generator(nbr_entities=nbr_non_matches, id_offset=len(ds_a))
     if use_pareto_dist_for_degrees:
         ds_b = [e for e in entity_gen]
+        ds_b = mingle_new_entities(entities_a=ds_a, entities_b=ds_b, perc_to_mingle=fuzzy_match_corruption_perc)
         entities_to_duplicate = random.sample(ds_a, k=nbr_matches)
         degree_dist, g = get_degree_distribution(
             nbr_samples=nbr_matches,
@@ -231,6 +266,7 @@ def generate_and_corrupt(
         g = None
         ds_b = random.sample(ds_a, k=nbr_exact_matches)
         ds_b = ds_b + [e for e in entity_gen]
+        ds_b = mingle_new_entities(entities_a=ds_a, entities_b=ds_b, perc_to_mingle=fuzzy_match_corruption_perc)
         # sample with replacement, so use random.choices here instead of random.sample
         ents_to_corrupt = random.choices(ds_a, k=nbr_fuzzy_matches)
         corr = corrupt_entities(ents_to_corrupt, perc_to_corrupt=fuzzy_match_corruption_perc)

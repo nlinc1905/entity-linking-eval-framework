@@ -25,17 +25,14 @@ from metrics.ranker_metrics import map_at_k
 
 DATASET_SIZE = 500
 MATCHING_SCHEME = {
-    'exact': 0.2,
-    'fuzzy': 0.8,
-    'non': 0.0,
+    'exact': 0.1,
+    'fuzzy': 0.4,
+    'non': 0.5,
 }
-FUZZY_MATCH_CORRUPTION_AMOUNT = 0.75  # this percentage of columns will be corrupted
+FUZZY_MATCH_CORRUPTION_AMOUNT = 0.5  # this percentage of columns will be corrupted
 USE_PARETO_DIST = True  # whether to sample degrees (nbr of corruptions) from a Pareto distribution
 # filename will have dataset size, match perc, corruption perc
-RAW_FILE_PATH = (
-    f"eval_data/raw-{int(DATASET_SIZE*2)}-{str(1 - MATCHING_SCHEME['non']).replace('.', '_')}"
-    f"-{str(FUZZY_MATCH_CORRUPTION_AMOUNT).replace('.', '_')}.parquet"
-)
+RAW_FILE_PATH = f"eval_data/raw-{int(DATASET_SIZE*2)}.parquet"
 
 TRAIN_TEST_RATIO = 0.7
 TRAIN_FILE_PATH = RAW_FILE_PATH.replace("raw", "train").replace("parquet", "csv")
