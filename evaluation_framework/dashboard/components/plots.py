@@ -2,6 +2,7 @@ import typing as t
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
+import plotly.express as px
 
 
 def min_max_normalizer(arr: np.ndarray):
@@ -45,7 +46,7 @@ def reduce_data_if_needed(df: pd.DataFrame, comparison_col: str, true_negative_l
     return df
 
 
-def make_paracoords(df: pd.DataFrame, comparison_col: str, category_to_color_map: dict):
+def make_paracoords(df: pd.DataFrame, comparison_col: str, category_to_color_map: dict) -> go.Figure:
     """Creates a parallel coordinates figure."""
 
     # make an integer column from the comparison_col that plotly can use for color mapping
@@ -94,7 +95,7 @@ def make_paracoords(df: pd.DataFrame, comparison_col: str, category_to_color_map
     return fig
 
 
-def make_boxplot(df: pd.DataFrame, col_to_plot: str, comparison_col: str, category_to_color_map: dict):
+def make_boxplot(df: pd.DataFrame, col_to_plot: str, comparison_col: str, category_to_color_map: dict) -> go.Figure:
     """Creates a boxplot figure for the given column, grouped by the given comparison column."""
     fig = go.Figure()
 
@@ -112,4 +113,20 @@ def make_boxplot(df: pd.DataFrame, col_to_plot: str, comparison_col: str, catego
         title=f'Distribution of {col_to_plot} by {comparison_col}'
     )
 
+    return fig
+
+
+def make_curve(x: np.ndarray, y: np.ndarray, title: str, xlabel: str, ylabel: str) -> go.Figure:
+    """Creates ROC and PR curves"""
+    fig = px.area(
+        x=x,
+        y=y,
+        title=title,
+        labels=dict(x=xlabel, y=ylabel),
+        height=300,
+    )
+    if "ROC" in title:
+        fig.add_shape(type='line', line=dict(dash='dash'), x0=0, x1=1, y0=0, y1=1)
+    else:
+        fig.add_shape(type='line', line=dict(dash='dash'), x0=0, x1=1, y0=0.5, y1=0.5)
     return fig

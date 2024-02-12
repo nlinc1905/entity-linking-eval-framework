@@ -3,6 +3,7 @@ import dash_bootstrap_components as dbc
 import json
 import polars as pl
 import numpy as np
+from sklearn.metrics import roc_curve, precision_recall_curve
 
 from graph.primitives.entities import Node, Link
 from graph.manipulators import (
@@ -10,7 +11,7 @@ from graph.manipulators import (
     filter_to_false_positives, filter_to_false_negatives, filter_to_errors,
 )
 from components.stylesheet import style_confusion_matrix, style_graph, style_rank_data_table
-from components.plots import make_paracoords, make_boxplot
+from components.plots import make_paracoords, make_boxplot, make_curve
 from components.layout import make_layout
 
 
@@ -52,6 +53,30 @@ test_x = test_x.to_pandas().set_index([f'{ID_COLNAME_PREFIX}1', f'{ID_COLNAME_PR
 test_y = test_y.to_pandas().set_index([f'{ID_COLNAME_PREFIX}1', f'{ID_COLNAME_PREFIX}2']).index
 preds = preds.to_pandas().set_index([f'{ID_COLNAME_PREFIX}1', f'{ID_COLNAME_PREFIX}2']).index
 rank_table_df = rank_table_df.to_pandas()
+
+# create ROC and PR curves
+fpr, tpr, thresholds = roc_curve(
+    rank_table_df['true_link'].values,
+    rank_table_df['link_probability_score'].values
+)
+roc_auc = scores['roc_auc']
+roc_auc_curve = make_curve(
+    x=fpr, y=tpr,
+    title=f"ROC Curve (AUC={roc_auc:.4f})",
+    xlabel="False Positive Rate",
+    ylabel="True Positive Rate"
+)
+prec, rec, _ = precision_recall_curve(
+    rank_table_df['true_link'].values,
+    rank_table_df['link_probability_score'].values
+)
+pr_auc = scores['average_precision']
+pr_auc_curve = make_curve(
+    x=rec, y=prec,
+    title=f"PR Curve (AUC={pr_auc:.4f})",
+    xlabel="Recall",
+    ylabel="Precision"
+)
 
 # create node and links objects for the graph
 nodes = {
@@ -102,6 +127,8 @@ app.layout = make_layout(
     conf_matrix=conf_matrix,
     conf_matrix_styles=conf_matrix_styles,
     scores=scores,
+    roc_curve=roc_auc_curve,
+    pr_curve=pr_auc_curve,
     graph_elements=elements,
     graph_styles=graph_styles,
     rank_table_df=rank_table_df,

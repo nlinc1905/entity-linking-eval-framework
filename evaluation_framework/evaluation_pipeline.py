@@ -3,7 +3,7 @@ import recordlinkage as rl
 from recordlinkage.datasets import load_krebsregister
 from sklearn.metrics import (
     confusion_matrix,
-    accuracy_score, f1_score, precision_score, recall_score, average_precision_score,
+    accuracy_score, f1_score, auc, precision_score, recall_score, average_precision_score,
     ndcg_score, label_ranking_average_precision_score
 )
 import numpy as np
@@ -184,6 +184,10 @@ scores = {
     # classification metrics
     'accuracy': accuracy_score(y_true=test_labels, y_pred=test_preds),
     'f1': f1_score(y_true=test_labels, y_pred=test_preds),
+    'roc_auc': auc(
+        y_true=rank_table_df['true_link'].values,
+        y_score=rank_table_df['link_probability_score']
+    ),
     'precision': precision_score(y_true=test_labels, y_pred=test_preds),
     'recall': recall_score(y_true=test_labels, y_pred=test_preds),
     'average_precision': average_precision_score(

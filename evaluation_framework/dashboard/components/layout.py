@@ -10,6 +10,8 @@ def make_layout(
         conf_matrix: np.ndarray,
         conf_matrix_styles: dict,
         scores: dict,
+        roc_curve: go.Figure,
+        pr_curve: go.Figure,
         graph_elements: list,
         graph_styles: list,
         rank_table_df: pd.DataFrame,
@@ -147,6 +149,20 @@ def make_layout(
                     children=[ranking_scores_layout],
                     width=4,
                 )
+            ],
+        ),
+
+        dbc.Row(
+            id="curves",
+            children=[
+                dbc.Col(
+                    children=[dcc.Graph(figure=roc_curve)],
+                    width=6,
+                ),
+                dbc.Col(
+                    children=[dcc.Graph(figure=pr_curve)],
+                    width=6,
+                ),
             ],
         ),
 
