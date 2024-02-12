@@ -1,5 +1,6 @@
 import typing as t
 import polars as pl
+import pandas as pd
 import recordlinkage as rl
 
 
@@ -8,7 +9,7 @@ def make_features(
     train_test_ratio: float,
     output_file_path_train: str,
     output_file_path_test: str,
-) -> None:
+) -> t.Tuple[pd.DataFrame, pd.DataFrame]:
     """Makes features for pairwise comparison of node attributes."""
     if isinstance(df, str):
         df = pl.read_parquet(df)
@@ -43,16 +44,4 @@ def make_features(
     train_features.to_csv(output_file_path_train, index=True)
     test_features.to_csv(output_file_path_test, index=True)
 
-
-if __name__ == "__main__":
-    INPUT_FILE_PATH = "eval_data/raw-1000-1_0-0_5.parquet"
-    TRAIN_TEST_RATIO = 0.8
-    OUTPUT_FILE_PATH_TRAIN = INPUT_FILE_PATH.replace("raw", "train").replace("parquet", "csv")
-    OUTPUT_FILE_PATH_TEST = INPUT_FILE_PATH.replace("raw", "test").replace("parquet", "csv")
-
-    make_features(
-        df=INPUT_FILE_PATH,
-        train_test_ratio=TRAIN_TEST_RATIO,
-        output_file_path_train=OUTPUT_FILE_PATH_TRAIN,
-        output_file_path_test=OUTPUT_FILE_PATH_TEST,
-    )
+    return train_features, test_features

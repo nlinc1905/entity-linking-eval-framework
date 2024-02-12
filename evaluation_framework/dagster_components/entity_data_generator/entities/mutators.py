@@ -4,7 +4,7 @@ import warnings
 import random
 import string
 
-from entity_data_generator.entities.get_random import random_date
+from dagster_components.entity_data_generator.entities.get_random import random_date
 
 
 class StringMutations(Enum):

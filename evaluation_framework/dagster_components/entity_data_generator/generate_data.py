@@ -8,9 +8,9 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import itertools
 
-from entity_data_generator.entities.entity import Entity
-from entity_data_generator.entities.get_random import random_name, random_date, random_email
-from entity_data_generator.entities.mutators import StringMutations, DateMutations
+from dagster_components.entity_data_generator.entities.entity import Entity
+from dagster_components.entity_data_generator.entities.get_random import random_name, random_date, random_email
+from dagster_components.entity_data_generator.entities.mutators import StringMutations, DateMutations
 
 
 def get_degree_distribution(
@@ -202,6 +202,7 @@ def generate_and_corrupt(
     perc_exact_match: float, 
     perc_non_match: float, 
     fuzzy_match_corruption_perc: float,
+    fuzzy_match_mingle_perc: float,
     use_pareto_dist_for_degrees: bool,
 ) -> t.Tuple[list, list, t.Union[nx.MultiGraph, None]]:
     """
@@ -221,6 +222,8 @@ def generate_and_corrupt(
         not in dataset A
     :param fuzzy_match_corruption_perc: Percentage of columns
         (attributes or properties of the records) to corrupt
+    :param fuzzy_match_mingle_perc: Percentage of columns
+        (attributes or properties of the records) to copy when changing the label
     :param use_pareto_dist_for_degrees: If True, corruptions are made such that the
         resulting nodes have degrees (numbers of corruptions) that follow a Pareto
         distribution, i.e. most nodes have 1 random corruption, fewer nodes have
@@ -253,7 +256,7 @@ def generate_and_corrupt(
     entity_gen = entity_generator(nbr_entities=nbr_non_matches, id_offset=len(ds_a))
     if use_pareto_dist_for_degrees:
         ds_b = [e for e in entity_gen]
-        ds_b = mingle_new_entities(entities_a=ds_a, entities_b=ds_b, perc_to_mingle=fuzzy_match_corruption_perc)
+        ds_b = mingle_new_entities(entities_a=ds_a, entities_b=ds_b, perc_to_mingle=fuzzy_match_mingle_perc)
         entities_to_duplicate = random.sample(ds_a, k=nbr_matches)
         degree_dist, g = get_degree_distribution(
             nbr_samples=nbr_matches,
@@ -278,7 +281,7 @@ def generate_and_corrupt(
         g = None
         ds_b = random.sample(ds_a, k=nbr_exact_matches)
         ds_b = ds_b + [e for e in entity_gen]
-        ds_b = mingle_new_entities(entities_a=ds_a, entities_b=ds_b, perc_to_mingle=fuzzy_match_corruption_perc)
+        ds_b = mingle_new_entities(entities_a=ds_a, entities_b=ds_b, perc_to_mingle=fuzzy_match_mingle_perc)
         # sample with replacement, so use random.choices here instead of random.sample
         ents_to_corrupt = random.choices(ds_a, k=nbr_fuzzy_matches)
         corr = corrupt_entities(ents_to_corrupt, perc_to_corrupt=fuzzy_match_corruption_perc)
@@ -390,37 +393,3 @@ def compare_graph_attributes(g1: nx.MultiGraph, g2: nx.Graph, plot: bool) -> Non
         f"(random graph, perfect graph)\n{g1_cc.tolist(), g2_cc.tolist()}"
         f"\n{gini(g1_cc), gini(g2_cc)}"
     )
-
-
-if __name__ == "__main__":
-    DATASET_SIZE = 500
-    MATCHING_SCHEME = {
-        'exact': 0.2,
-        'fuzzy': 0.8,
-        'non': 0.0,
-    }
-    FUZZY_MATCH_CORRUPTION_AMOUNT = 0.5  # this percentage of columns will be corrupted
-    USE_PARETO_DIST = True  # whether to sample degrees (nbr of corruptions) from a Pareto distribution
-    # filename will have dataset size, match perc, corruption perc
-    OUTPUT_FILE_PATH = (
-        f"eval_data/raw-{int(DATASET_SIZE * 2)}-{str(1 - MATCHING_SCHEME['non']).replace('.', '_')}"
-        f"-{str(FUZZY_MATCH_CORRUPTION_AMOUNT).replace('.', '_')}.parquet"
-    )
-
-    a, b, g = generate_and_corrupt(
-        dataset_size=DATASET_SIZE,
-        perc_exact_match=MATCHING_SCHEME['exact'],
-        perc_non_match=MATCHING_SCHEME['non'],
-        fuzzy_match_corruption_perc=FUZZY_MATCH_CORRUPTION_AMOUNT,
-        use_pareto_dist_for_degrees=USE_PARETO_DIST,
-    )
-
-    # combine the datasets and save the result
-    generated_graph_data = combine_datasets_and_save_to_parquet(ds=a + b, out_path=OUTPUT_FILE_PATH)
-
-    if g is not None:
-        # compare network attributes between the generated data and a randomly generated one
-        nodelist = generated_graph_data.get_column('index').to_list()
-        edgelist = generated_graph_data.group_by('id').agg(pl.col('index')).get_column('index').to_list()
-        g_gen = get_graph(nodes=nodelist, edges=edgelist, include_singletons=False)
-        compare_graph_attributes(g1=g, g2=g_gen, plot=True)
