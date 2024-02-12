@@ -54,6 +54,7 @@ def get_degree_distribution(
         # leverage matplotlib's binning to discretize the samples into bins
         # the bins will be the degrees, so by mapping samples from the distribution to the bins,
         # we map to degrees
+        plt.clf()
         count, bins, _ = plt.hist(samples, bins=max_degree, density=True)
         degrees = np.digitize(samples, bins) - int(use_degree_offset)
         condition = degrees.sum() % 2 != 0
@@ -61,7 +62,18 @@ def get_degree_distribution(
     if verbose:
         fit = alpha*x_m**alpha / bins**(alpha+1)
         plt.plot(bins, max(count)*fit/max(fit), linewidth=2, color='r')
-        plt.title("Degree Distribution Will Look Like This")
+        plt.title(
+            f"Theoretical Degree Distribution Will Look Like This\n"
+            f"Power Law Distribution with alpha = {alpha}"
+        )
+        plt.ylabel("Density")
+        plt.xlabel("Continuous Score to be Discretized into Degrees")
+        plt.show()
+        plt.clf()
+        plt.hist(degrees, bins=range(1, max(degrees) + 1), color='orange')
+        plt.title("Actual Degree Distribution Will Look Like This")
+        plt.ylabel("Count of Nodes")
+        plt.xlabel("Degree Centrality")
         plt.show()
     plt.close()
 
@@ -248,7 +260,7 @@ def generate_and_corrupt(
             max_degree=7,
             use_degree_offset=False,
             generate_random_graph=use_pareto_dist_for_degrees,
-            verbose=False,
+            verbose=True,
         )
         for idx, ent in enumerate(entities_to_duplicate):
             # create as many corruptions for each node as there are degrees for that node in the degree distribution
