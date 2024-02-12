@@ -3,7 +3,7 @@ import recordlinkage as rl
 from recordlinkage.datasets import load_krebsregister
 from sklearn.metrics import (
     confusion_matrix,
-    accuracy_score, f1_score, auc, precision_score, recall_score, average_precision_score,
+    accuracy_score, f1_score, roc_auc_score, precision_score, recall_score, average_precision_score,
     ndcg_score, label_ranking_average_precision_score
 )
 import numpy as np
@@ -11,10 +11,11 @@ import polars as pl
 import pandas as pd
 import json
 import mlflow
+import networkx as nx
 
 from entity_data_generator.generate_data import (
     generate_and_corrupt, combine_datasets_and_save_to_parquet,
-    get_graph, compare_graph_attributes,
+    get_graph, compare_graph_attributes, gini,
 )
 from feature_engineering.make_features import make_features
 from metrics.classifier_metrics import (
@@ -179,12 +180,16 @@ for row in ranks_to_score.iterrows():
     y_true.append(row_list_true)
     y_pred.append(row_list_pred)
 
+# calculate the connected components Gini to measure how well-formed the predicted graph is
+g_pred = get_graph(nodes=[], edges=preds.tolist(), include_singletons=False)
+g_pred_cc = np.array([len(c) for c in sorted(nx.connected_components(g_pred), key=len, reverse=True)])
+
 conf_matrix = confusion_matrix(y_true=test_labels, y_pred=test_preds)
 scores = {
     # classification metrics
     'accuracy': accuracy_score(y_true=test_labels, y_pred=test_preds),
     'f1': f1_score(y_true=test_labels, y_pred=test_preds),
-    'roc_auc': auc(
+    'roc_auc': roc_auc_score(
         y_true=rank_table_df['true_link'].values,
         y_score=rank_table_df['link_probability_score']
     ),
@@ -200,6 +205,8 @@ scores = {
         y_true=[ranks_to_score['true_link'].tolist()],
         y_score=[ranks_to_score['link_probability_score'].tolist()]
     ),
+    # graph metrics
+    'cc_gini': gini(g_pred_cc),
 }
 scores = {k: round(v, 4) for k, v in scores.items()}
 print(conf_matrix, "\n", scores)

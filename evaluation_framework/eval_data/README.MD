@@ -1,0 +1,1 @@
+Data in this folder is the output from the data generation and feature engineering steps in evaluation_pipeline.py.  It should be put in a bucket.

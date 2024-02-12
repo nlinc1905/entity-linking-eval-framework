@@ -105,6 +105,22 @@ def make_layout(
         },
     )
 
+    graph_scores_layout = html.Table(
+        children=[
+            html.Th(["Graph Metrics"]),
+            html.Tr([
+                html.Td(['Connected Components Gini']),
+                html.Td(id='gini-score', children=[scores['cc_gini']], style={'padding-left': '8px'}),
+            ]),
+        ],
+        style={
+            'border': '2px solid gray',
+            'border-collapse': 'separate',
+            'border-radius': '10px',
+            'padding': '8px',
+        },
+    )
+
     graph_layout = cyto.Cytoscape(
         id='cytoscape-layout-9',
         elements=graph_elements,
@@ -146,7 +162,11 @@ def make_layout(
                     width=4,
                 ),
                 dbc.Col(
-                    children=[ranking_scores_layout],
+                    children=[
+                        ranking_scores_layout,
+                        html.Br(),
+                        graph_scores_layout,
+                    ],
                     width=4,
                 )
             ],
