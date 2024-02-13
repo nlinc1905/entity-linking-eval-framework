@@ -6,7 +6,7 @@ import plotly.express as px
 
 from dagster_components.assets import GenerateDataConfig
 from dagster_components.ops import (
-    EngineerFeaturesConfig, TrainModelConfig, ScorePredictionsConfig,
+    EngineerFeaturesConfig, TrainModelConfig,
     LogMlflowMetricsConfig, SaveDataConfig,
 )
 from dagster_components.jobs import evaluate
@@ -25,15 +25,9 @@ default_config = {
     "engineer_features": EngineerFeaturesConfig(
         raw_file_path="eval_data/raw-1000.parquet",
         train_test_ratio=0.7,
-        train_file_path="eval_data/train-1000.parquet",
-        test_file_path="eval_data/test-1000.parquet",
     ),
     "train_model": TrainModelConfig(
-        model_key="lr",
-    ),
-    "score_predictions": ScorePredictionsConfig(
-        classifier_result_col="model_score_category",
-        id_colname_prefix="index_",
+        model_name="lr",
     ),
     "log_mlflow_metrics": LogMlflowMetricsConfig(
         track_mlflow_experiment=True,
@@ -77,23 +71,24 @@ if __name__ == "__main__":
                 # evaluate.execute_in_process(run_config=run_config)
 
         # collect scores to visualize
+        metric_to_plot = "average_precision"
         score_files = [
             os.path.join(root, name)
             for root, dirs, files in os.walk("mlruns")
-            for name in files if name == "f1"
+            for name in files if name == metric_to_plot
         ]
         score_data = []  # will be list of tuples
         for f in score_files:
             with open(f, "r") as file:
                 first_line = file.readline()
                 score_data.append(tuple(first_line.split(" ")[:2]))
-        score_data = pd.DataFrame(score_data, columns=["time", "f1"]).sort_values("time")
+        score_data = pd.DataFrame(score_data, columns=["time", metric_to_plot]).sort_values("time")
         score_data['corruption_perc'] = [t[0] for t in score_params]
         score_data['mingle_perc'] = [t[1] for t in score_params]
         score_data.sort_values('time', ascending=False, inplace=True)
 
         # plot results
-        fig = px.scatter_3d(score_data, x='corruption_perc', y='mingle_perc', z='f1')
+        fig = px.scatter_3d(score_data, x='corruption_perc', y='mingle_perc', z=metric_to_plot)
         fig.update_traces(marker={'size': 5})
         fig.show()
 

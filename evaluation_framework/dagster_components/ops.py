@@ -27,17 +27,10 @@ from dagster_components.metrics.ranker_metrics import map_at_k
 class EngineerFeaturesConfig(Config):
     raw_file_path: str
     train_test_ratio: float
-    train_file_path: str
-    test_file_path: str
 
 
 class TrainModelConfig(Config):
-    model_key: str
-
-
-class ScorePredictionsConfig(Config):
-    classifier_result_col: str
-    id_colname_prefix: str
+    model_name: str
 
 
 class LogMlflowMetricsConfig(Config):
@@ -56,8 +49,8 @@ def engineer_features(
     train, test = make_features(
         df=generated_data,
         train_test_ratio=config.train_test_ratio,
-        output_file_path_train=config.train_file_path,
-        output_file_path_test=config.test_file_path,
+        output_file_path_train=config.train_file_path.replace("raw", "train"),
+        output_file_path_test=config.test_file_path.replace("raw", "test"),
     )
 
     # recordlinkage expects labels to be a pandas MultiIndex, and features to be a dataframe
@@ -79,7 +72,7 @@ def train_model(config: TrainModelConfig, train_x: pd.DataFrame, train_y: pd.Mul
         "km": rl.KMeansClassifier(),  # uses k=2
         "em": rl.ECMClassifier(binarize=0.8, max_iter=100, atol=1e-4),
     }
-    model = models[config.model_key]
+    model = models[config.model_name]
     model.fit(train_x, train_y)
 
     return model
@@ -112,26 +105,26 @@ def score_predictions(
     fns = get_false_negatives(test_y, preds)
 
     # add a model score category column
-    test_x[config.classifier_result_col] = 'UNK'
-    test_x.loc[tps, config.classifier_result_col] = 'TP'
-    test_x.loc[fps, config.classifier_result_col] = 'FP'
-    test_x.loc[tns, config.classifier_result_col] = 'TN'
-    test_x.loc[fns, config.classifier_result_col] = 'FN'
+    test_x['model_score_category'] = 'UNK'
+    test_x.loc[tps, 'model_score_category'] = 'TP'
+    test_x.loc[fps, 'model_score_category'] = 'FP'
+    test_x.loc[tns, 'model_score_category'] = 'TN'
+    test_x.loc[fns, 'model_score_category'] = 'FN'
 
     # sort the matches by descending predicted probabilities for each ID
     pred_probs = pred_probs.reset_index(drop=False).rename(columns={0: 'prob'})
-    pred_probs.sort_values([f'{config.id_colname_prefix}1', 'prob'], ascending=[True, False], inplace=True)
+    pred_probs.sort_values(['index_1', 'prob'], ascending=[True, False], inplace=True)
 
     # add the binary ground truth label to the predicted probability dataframe
     test_y_dict = {k: 1 for k in test_y}
-    pred_probs['key'] = list(zip(pred_probs[f'{config.id_colname_prefix}1'], pred_probs[f'{config.id_colname_prefix}2']))
+    pred_probs['key'] = list(zip(pred_probs['index_1'], pred_probs['index_2']))
     pred_probs['actual'] = pred_probs['key'].map(test_y_dict).fillna(0).astype(int)
 
     # convert predicted probabilities into a ranking dataframe to evaluation information retrieval metrics
-    link_to_score_category_map = dict(zip(test_x.index, test_x[config.classifier_result_col]))
+    link_to_score_category_map = dict(zip(test_x.index, test_x['model_score_category']))
     rank_table_df = pred_probs.copy()
-    rank_table_df['predicted_rank'] = rank_table_df.groupby(f'{config.id_colname_prefix}1').transform('cumcount') + 1
-    rank_table_df[config.classifier_result_col] = rank_table_df['key'].map(link_to_score_category_map)
+    rank_table_df['predicted_rank'] = rank_table_df.groupby('index_1').transform('cumcount') + 1
+    rank_table_df['model_score_category'] = rank_table_df['key'].map(link_to_score_category_map)
     rank_table_df['prob'] = rank_table_df['prob'].apply(lambda x: round(x, 4))
     rank_table_df.rename(columns={"prob": "link_probability_score", "actual": "true_link"}, inplace=True)
     rank_table_df.drop('key', axis=1, inplace=True)
