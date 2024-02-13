@@ -1,4 +1,5 @@
 dagster==1.6.4
+dagster-webserver==1.6.4
 dash==2.14.2
 dash-bootstrap-components==1.5.0
 dash-core-components==2.0.0

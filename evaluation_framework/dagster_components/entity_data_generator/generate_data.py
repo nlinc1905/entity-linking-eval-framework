@@ -68,13 +68,15 @@ def get_degree_distribution(
         )
         plt.ylabel("Density")
         plt.xlabel("Continuous Score to be Discretized into Degrees")
-        plt.show()
+        plt.tight_layout()
+        plt.savefig("eval_data/plots/theoretical_degree_dist.png")
         plt.clf()
         plt.hist(degrees, bins=range(1, max(degrees) + 1), color='orange')
         plt.title("Actual Degree Distribution Will Look Like This")
         plt.ylabel("Count of Nodes")
         plt.xlabel("Degree Centrality")
-        plt.show()
+        plt.tight_layout()
+        plt.savefig("eval_data/plots/actual_degree_dist.png")
     plt.close()
 
     g = None
@@ -373,20 +375,24 @@ def compare_graph_attributes(g1: nx.MultiGraph, g2: nx.Graph, plot: bool) -> Non
         plt.title("Random Graph\nLinks are Randomly Predicted\n(nodes with 0 links are not shown)")
         nx.draw(g1, node_size=20)
         plt.tight_layout()
-        plt.show()
+        plt.savefig("eval_data/plots/random_graph.png")
+        plt.clf()
 
         fig = plt.figure(figsize=(12, 8))
         plt.title("Perfect Graph\nLinks are Perfectly Predicted\n(nodes with 0 links are not shown)")
         nx.draw(g2, node_size=20)
         plt.tight_layout()
-        plt.show()
+        plt.savefig("eval_data/plots/perfect_graph.png")
+        plt.close()
 
         # plt.hist(g1_cc, bins=4, label="Random Graph")
         # plt.hist(g2_cc, bins=4, label="Perfect Graph")
         # plt.title("Connected Component Size Distributions")
         # plt.xlabel("Connected Component Size")
         # plt.legend()
-        # plt.show()
+        # plt.tight_layout()
+        # plt.savefig("eval_data/plots/connected_component_dist.png")
+        # plt.close()
 
     print(
         f"Top {top_n} connected component sizes and Gini coefficients for\n"
