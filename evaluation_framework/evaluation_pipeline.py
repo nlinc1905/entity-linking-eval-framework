@@ -2,6 +2,7 @@ import argparse
 import os
 from dagster import RunConfig
 import pandas as pd
+import plotly
 import plotly.express as px
 
 from dagster_components.assets import GenerateDataConfig
@@ -90,7 +91,7 @@ if __name__ == "__main__":
         # plot results
         fig = px.scatter_3d(score_data, x='corruption_perc', y='mingle_perc', z=metric_to_plot)
         fig.update_traces(marker={'size': 5})
-        fig.show()
+        plotly.offline.plot(fig, filename='eval_data/plots/multi-run.html')
 
     else:
         # do a single run
