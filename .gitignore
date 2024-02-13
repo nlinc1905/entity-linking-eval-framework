@@ -171,3 +171,4 @@ mlruns/
 *.parquet
 *.npy
 *.json
+*.png
