@@ -1,0 +1,1 @@
+Files in this folder are only used for images in the main README.

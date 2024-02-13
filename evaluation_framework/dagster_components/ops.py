@@ -49,8 +49,8 @@ def engineer_features(
     train, test = make_features(
         df=generated_data,
         train_test_ratio=config.train_test_ratio,
-        output_file_path_train=config.train_file_path.replace("raw", "train"),
-        output_file_path_test=config.test_file_path.replace("raw", "test"),
+        output_file_path_train=config.raw_file_path.replace("raw", "train"),
+        output_file_path_test=config.raw_file_path.replace("raw", "test"),
     )
 
     # recordlinkage expects labels to be a pandas MultiIndex, and features to be a dataframe
@@ -87,7 +87,6 @@ def get_model_predictions(model, test_x: pd.DataFrame) -> t.Tuple[pd.MultiIndex,
 
 @op(out={'scores': Out(), 'conf_matrix': Out(), 'test_x': Out(), 'rank_table_df': Out()})
 def score_predictions(
-    config: ScorePredictionsConfig,
     preds: pd.MultiIndex, 
     pred_probs: pd.Series,
     test_x: pd.DataFrame, 

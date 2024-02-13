@@ -46,11 +46,10 @@ def generate_data(config: GenerateDataConfig) -> pl.DataFrame:
     with open("dashboard/data/node_data.json", "w") as f:
         json.dump(node_data_for_dashboard, f)
 
-    if g is not None:
-        # compare network attributes between the generated data and a randomly generated one
-        nodelist = generated_graph_data.get_column('index').to_list()
-        edgelist = generated_graph_data.group_by('id').agg(pl.col('index')).get_column('index').to_list()
-        g_gen = get_graph(nodes=nodelist, edges=edgelist, include_singletons=False)
-        compare_graph_attributes(g1=g, g2=g_gen, plot=True)
+    # compare network attributes between the generated data and a randomly generated one
+    nodelist = generated_graph_data.get_column('index').to_list()
+    edgelist = generated_graph_data.group_by('id').agg(pl.col('index')).get_column('index').to_list()
+    g_gen = get_graph(nodes=nodelist, edges=edgelist, include_singletons=False)
+    compare_graph_attributes(g1=g, g2=g_gen)
 
     return generated_graph_data

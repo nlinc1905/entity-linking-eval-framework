@@ -13,14 +13,18 @@ from dagster_components.entity_data_generator.entities.get_random import random_
 from dagster_components.entity_data_generator.entities.mutators import StringMutations, DateMutations
 
 
+def seed_everything(seed: int = 14):
+    """Sets random seeds for repeatability"""
+    random.seed(seed)
+    np.random.seed(seed)
+
+
 def get_degree_distribution(
     alpha: float = 70.0,
     x_m: float = 1.0,
     nbr_samples: int = 100,
     max_degree: int = 10,
     use_degree_offset: bool = True,
-    generate_random_graph: bool = False,
-    verbose: bool = False,
 ) -> t.Tuple[np.ndarray, t.Any]:
     """
     Generates a Pareto shaped degree distribution, where the shape is controlled
@@ -42,11 +46,9 @@ def get_degree_distribution(
         will range from 1-(max_degree+1) inclusive.  Set to False if the degrees are being
         generated only for nodes/entities with links.  Leave as True if the degrees are
         being generated for all nodes/entities, including the ones that will have 0 links.
-    :param generate_random_graph: If True, also returns a networkx MultiGraph with randomly
-        generated links, following the degree distribution
-    :param verbose: If True, information about the resulting distribution will be displayed
     """
     # the sum of degrees must be even
+    seed_everything()
     condition = True
     while condition:
         samples = (np.random.default_rng().pareto(alpha, nbr_samples) + 1) * x_m
@@ -59,30 +61,29 @@ def get_degree_distribution(
         degrees = np.digitize(samples, bins) - int(use_degree_offset)
         condition = degrees.sum() % 2 != 0
 
-    if verbose:
-        fit = alpha*x_m**alpha / bins**(alpha+1)
-        plt.plot(bins, max(count)*fit/max(fit), linewidth=2, color='r')
-        plt.title(
-            f"Theoretical Degree Distribution Will Look Like This\n"
-            f"Power Law Distribution with alpha = {alpha}"
-        )
-        plt.ylabel("Density")
-        plt.xlabel("Continuous Score to be Discretized into Degrees")
-        plt.tight_layout()
-        plt.savefig("eval_data/plots/theoretical_degree_dist.png")
-        plt.clf()
-        plt.hist(degrees, bins=range(1, max(degrees) + 1), color='orange')
-        plt.title("Actual Degree Distribution Will Look Like This")
-        plt.ylabel("Count of Nodes")
-        plt.xlabel("Degree Centrality")
-        plt.tight_layout()
-        plt.savefig("eval_data/plots/actual_degree_dist.png")
+    # plot the degree distribution
+    fit = alpha*x_m**alpha / bins**(alpha+1)
+    plt.plot(bins, max(count)*fit/max(fit), linewidth=2, color='r')
+    plt.title(
+        f"Theoretical Degree Distribution Will Look Like This\n"
+        f"Power Law Distribution with alpha = {alpha}"
+    )
+    plt.ylabel("Density")
+    plt.xlabel("Continuous Score to be Discretized into Degrees")
+    plt.tight_layout()
+    plt.savefig("eval_data/plots/theoretical_degree_dist.png")
+    plt.clf()
+    plt.hist(degrees, bins=range(1, max(degrees) + 1), color='orange')
+    plt.title("Actual Degree Distribution Will Look Like This")
+    plt.ylabel("Count of Nodes")
+    plt.xlabel("Degree Centrality")
+    plt.tight_layout()
+    plt.savefig("eval_data/plots/actual_degree_dist.png")
     plt.close()
 
-    g = None
-    if generate_random_graph:
-        g = nx.configuration_model(deg_sequence=degrees, seed=14)
-        g.remove_edges_from(nx.selfloop_edges(g))  # sometimes randomly generated graph have self-loops
+    # generate a random graph for comparison
+    g = nx.configuration_model(deg_sequence=degrees, seed=14)
+    g.remove_edges_from(nx.selfloop_edges(g))  # sometimes randomly generated graph have self-loops
 
     return degrees, g
 
@@ -127,6 +128,7 @@ def corrupt_entities(entities: t.List[Entity], perc_to_corrupt: float) -> t.List
     nbr_properties_to_corrupt = int(perc_to_corrupt * len(mutable_properties))
     # print(f"Corrupting {nbr_properties_to_corrupt} properties ({perc_to_corrupt}%) per entity.")
 
+    seed_everything()
     corrupted = []
     for ent in entities:
 
@@ -181,6 +183,7 @@ def mingle_new_entities(
     nbr_properties_to_mingle = int(perc_to_mingle * len(mutable_properties))
     # print(f"Mingling {nbr_properties_to_mingle} properties ({perc_to_mingle}%) per entity.")
 
+    seed_everything()
     mingled = []
     for ent in entities_b:
 
@@ -259,13 +262,12 @@ def generate_and_corrupt(
     if use_pareto_dist_for_degrees:
         ds_b = [e for e in entity_gen]
         ds_b = mingle_new_entities(entities_a=ds_a, entities_b=ds_b, perc_to_mingle=fuzzy_match_mingle_perc)
+        seed_everything()
         entities_to_duplicate = random.sample(ds_a, k=nbr_matches)
         degree_dist, g = get_degree_distribution(
             nbr_samples=nbr_matches,
             max_degree=7,
             use_degree_offset=False,
-            generate_random_graph=use_pareto_dist_for_degrees,
-            verbose=True,
         )
         for idx, ent in enumerate(entities_to_duplicate):
             # create as many corruptions for each node as there are degrees for that node in the degree distribution
@@ -281,10 +283,12 @@ def generate_and_corrupt(
                     ds_b += corr
     else:
         g = None
+        seed_everything()
         ds_b = random.sample(ds_a, k=nbr_exact_matches)
         ds_b = ds_b + [e for e in entity_gen]
         ds_b = mingle_new_entities(entities_a=ds_a, entities_b=ds_b, perc_to_mingle=fuzzy_match_mingle_perc)
         # sample with replacement, so use random.choices here instead of random.sample
+        seed_everything()
         ents_to_corrupt = random.choices(ds_a, k=nbr_fuzzy_matches)
         corr = corrupt_entities(ents_to_corrupt, perc_to_corrupt=fuzzy_match_corruption_perc)
         ds_b = ds_b + corr
@@ -359,7 +363,7 @@ def gini(x: np.ndarray):
     return diffsum / (len(x)**2 * np.mean(x))
 
 
-def compare_graph_attributes(g1: nx.MultiGraph, g2: nx.Graph, plot: bool) -> None:
+def compare_graph_attributes(g1: nx.MultiGraph, g2: nx.Graph) -> None:
     """Compares graph attributes between 2 graphs"""
     # compare the distribution of the lengths of the top n connected components
     top_n = 10
@@ -370,29 +374,28 @@ def compare_graph_attributes(g1: nx.MultiGraph, g2: nx.Graph, plot: bool) -> Non
         len(c) for c in sorted(nx.connected_components(g2), key=len, reverse=True)[:top_n]
     ])
 
-    if plot:
-        fig = plt.figure(figsize=(12, 8))
-        plt.title("Random Graph\nLinks are Randomly Predicted\n(nodes with 0 links are not shown)")
-        nx.draw(g1, node_size=20)
-        plt.tight_layout()
-        plt.savefig("eval_data/plots/random_graph.png")
-        plt.clf()
+    fig = plt.figure(figsize=(12, 8))
+    plt.title("Random Graph\nLinks are Randomly Predicted\n(nodes with 0 links are not shown)")
+    nx.draw(g1, node_size=20)
+    plt.tight_layout()
+    plt.savefig("eval_data/plots/random_graph.png")
+    plt.clf()
 
-        fig = plt.figure(figsize=(12, 8))
-        plt.title("Perfect Graph\nLinks are Perfectly Predicted\n(nodes with 0 links are not shown)")
-        nx.draw(g2, node_size=20)
-        plt.tight_layout()
-        plt.savefig("eval_data/plots/perfect_graph.png")
-        plt.close()
+    fig = plt.figure(figsize=(12, 8))
+    plt.title("Perfect Graph\nLinks are Perfectly Predicted\n(nodes with 0 links are not shown)")
+    nx.draw(g2, node_size=20)
+    plt.tight_layout()
+    plt.savefig("eval_data/plots/perfect_graph.png")
+    plt.close()
 
-        # plt.hist(g1_cc, bins=4, label="Random Graph")
-        # plt.hist(g2_cc, bins=4, label="Perfect Graph")
-        # plt.title("Connected Component Size Distributions")
-        # plt.xlabel("Connected Component Size")
-        # plt.legend()
-        # plt.tight_layout()
-        # plt.savefig("eval_data/plots/connected_component_dist.png")
-        # plt.close()
+    # plt.hist(g1_cc, bins=4, label="Random Graph")
+    # plt.hist(g2_cc, bins=4, label="Perfect Graph")
+    # plt.title("Connected Component Size Distributions")
+    # plt.xlabel("Connected Component Size")
+    # plt.legend()
+    # plt.tight_layout()
+    # plt.savefig("eval_data/plots/connected_component_dist.png")
+    # plt.close()
 
     print(
         f"Top {top_n} connected component sizes and Gini coefficients for\n"

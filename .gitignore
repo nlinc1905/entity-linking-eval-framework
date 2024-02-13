@@ -172,3 +172,6 @@ mlruns/
 *.npy
 *.json
 *.png
+
+# README images
+!*/static/*.png

@@ -30,7 +30,7 @@ default_config = {
         model_name="lr",
     ),
     "log_mlflow_metrics": LogMlflowMetricsConfig(
-        track_mlflow_experiment=True,
+        track_mlflow_experiment=False,
     ),
     "save_data_for_dashboard": SaveDataConfig(
         dashboard_data_path="dashboard/data/",

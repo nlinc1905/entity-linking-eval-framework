@@ -1,6 +1,8 @@
 # entity-linking-eval-framework
 A framework for testing and evaluating entity linking models.
 
+![dashboard_example](evaluation_framework/static/dashboard_example.png)
+
 This framework assumes the data is tabular, consisting of entity features like name, address, DoB, etc.  The models 
 to be evaluated are essentially performing link prediction.  Therefore, the framework generates links by corrupting 
 and mixing entity attributes.  For example, "John Doe" might become "John Dooe" and the model would need to learn that 
@@ -27,6 +29,8 @@ A Dagster sensor can be configured to do an evaluation run any time a change is 
 modeling steps.  Dagster and MLFlow can promote a challenger model to the new champion to automate model updates. 
 
 ## How to Run
+
+First time setup for local runs should install requirements.  Either use a virtual environment or Docker.
 
 The evaluation pipeline can be run from the command line or from the Dagster webserver UI.  To run from the command 
 line:
@@ -105,16 +109,21 @@ of entities).  Conversely, a small alpha will flatten the degree distribution so
 numbers of links (this would mean that all corruptions of the data come more evenly from the samples).  Alpha should 
 be set to a value that resembles what is seen in the real data.
 
+![degree_dist](evaluation_framework/static/theoretical_degree_dist.png)
+![actual_degree_dist](evaluation_framework/static/actual_degree_dist.png)
+
 The generator builds 2 graphs.  
 1. The first is a random graph - a graph with the specified degree distribution where 
 links are predicted randomly.  This graph serves as a baseline for entity linking, as it results in a graph with a few 
 very large connected components.  Due to the transitive property, these entities are all linked, incorrectly.  The Gini 
 coefficient measures the inequality of the distribution of connected component sizes, and it is larger for randomly 
 generated graphs like this, where the graph is generated without taking transitive linking into consideration.  
+![random_graph](evaluation_framework/static/random_graph.png)
 2. The second is a perfect graph - a graph with the specified degree distribution where 
 links are predicted perfectly.  This is the target that a model should aim for.  It is a graph with smaller, well 
 defined connected components.  The Gini coefficient is much smaller to reflect a more even distribution of connected 
 components. 
+![perfect_graph](evaluation_framework/static/perfect_graph.png)
 
 These 2 graphs' Gini coefficients for the connected components can serve as benchmarks for the model.  A good model 
 should have a small coefficient, similar to the perfect graph.  It is a handy way to evaluate the model, even without 

@@ -7,6 +7,7 @@ from faker import Faker
 # initialize for given localities
 # see docs: https://faker.readthedocs.io/en/master/
 fake = Faker(['en_US', 'it_IT'])
+Faker.seed(14)
 
 
 def random_name() -> t.Tuple[str, str]:
