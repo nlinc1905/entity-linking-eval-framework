@@ -1,5 +1,6 @@
 import argparse
 import os
+import shutil
 from dagster import RunConfig
 import pandas as pd
 import plotly
@@ -17,7 +18,7 @@ default_config = {
     "generate_data": GenerateDataConfig(
         dataset_size=1000,
         perc_exact_match=0.1,
-        perc_non_match=0.1,
+        perc_non_match=0.25,
         fuzzy_match_corruption_perc=0.5,
         fuzzy_match_mingle_perc=0.5,
         use_pareto_dist_for_degrees=True,
@@ -52,6 +53,9 @@ if __name__ == "__main__":
 
     if args.run_type == "multi":
 
+        # clear previous runs
+        shutil.rmtree("mlruns", ignore_errors=True)
+
         # run several evaluations for various combinations of corruption and mingling
         corruption_percentages = [i / 10 for i in range(1, 10)]
         mingle_percentages = [i / 10 for i in range(1, 10)]
@@ -59,17 +63,20 @@ if __name__ == "__main__":
         for cp in corruption_percentages:
             for mp in mingle_percentages:
                 score_params.append(tuple([cp, mp]))
-                # default_config['generate_data'] = GenerateDataConfig(
-                #     dataset_size=1000,
-                #     perc_exact_match=0.1,
-                #     perc_non_match=0.0,
-                #     fuzzy_match_corruption_perc=cp,
-                #     fuzzy_match_mingle_perc=mp,
-                #     use_pareto_dist_for_degrees=True,
-                #     raw_file_path="eval_data/raw-1000.parquet",
-                # )
-                # run_config = RunConfig(default_config)
-                # evaluate.execute_in_process(run_config=run_config)
+                default_config['generate_data'] = GenerateDataConfig(
+                    dataset_size=1000,
+                    perc_exact_match=0.1,
+                    perc_non_match=0.25,
+                    fuzzy_match_corruption_perc=cp,
+                    fuzzy_match_mingle_perc=mp,
+                    use_pareto_dist_for_degrees=True,
+                    raw_file_path="eval_data/raw-1000.parquet",
+                )
+                default_config['log_mlflow_metrics'] = LogMlflowMetricsConfig(
+                    track_mlflow_experiment=True,
+                )
+                run_config = RunConfig(default_config)
+                evaluate.execute_in_process(run_config=run_config)
 
         # collect scores to visualize
         metric_to_plot = "average_precision"
