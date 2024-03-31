@@ -2,6 +2,8 @@
 A framework for testing and evaluating entity linking models.
 
 ![dashboard_example](evaluation_framework/static/dashboard_example.png)
+![dashboard_example2](evaluation_framework/static/dashboard_example2.png)
+![dashboard_example3](evaluation_framework/static/dashboard_example3.png)
 
 This framework assumes the data is tabular, consisting of entity features like name, address, DoB, etc.  The models 
 to be evaluated are essentially performing link prediction.  Therefore, the framework generates links by corrupting 
