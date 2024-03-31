@@ -128,7 +128,6 @@ def corrupt_entities(entities: t.List[Entity], perc_to_corrupt: float) -> t.List
     nbr_properties_to_corrupt = int(perc_to_corrupt * len(mutable_properties))
     # print(f"Corrupting {nbr_properties_to_corrupt} properties ({perc_to_corrupt}%) per entity.")
 
-    seed_everything()
     corrupted = []
     for ent in entities:
 
@@ -183,7 +182,6 @@ def mingle_new_entities(
     nbr_properties_to_mingle = int(perc_to_mingle * len(mutable_properties))
     # print(f"Mingling {nbr_properties_to_mingle} properties ({perc_to_mingle}%) per entity.")
 
-    seed_everything()
     mingled = []
     for ent in entities_b:
 

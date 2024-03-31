@@ -14,20 +14,15 @@ def make_features(
     if isinstance(df, str):
         df = pl.read_parquet(df)
 
-    # split into train and test sets
-    df = df.sample(n=len(df), with_replacement=False, shuffle=True, seed=14)
-    train_test_split_index = int(len(df) * train_test_ratio)
     # TODO: remove dependency on Pandas - recordlinkage requires it unfortunately
-    train = df[:train_test_split_index].to_pandas().set_index('index')
-    test = df[train_test_split_index:].to_pandas().set_index('index')
+    df = df.to_pandas().set_index('index')
 
     # create record pairs
     # TODO: could do blocking here
     indexer = rl.Index()
     indexer.full()
     # indexer.block("first_name")
-    train_pairs = indexer.index(train)
-    test_pairs = indexer.index(test)
+    pairs = indexer.index(df)
 
     # compare records on features generated on attributes
     # TODO: determine which features to build - these are just starters ripped out of the package docs
@@ -37,11 +32,14 @@ def make_features(
     compare_cl.string("last_name", "last_name", method="jarowinkler", threshold=0.85, label="last_name")
     compare_cl.exact("birth_date", "birth_date", label="birth_date")
     compare_cl.string("email", "email", method="jarowinkler", threshold=0.85, label="email")
-    train_features = compare_cl.compute(train_pairs, train, train)
-    test_features = compare_cl.compute(test_pairs, test, test)
+    features = compare_cl.compute(pairs, df, df)
+
+    # split into train and test sets
+    train = features.sample(frac=train_test_ratio, random_state=14)
+    test = features[~features.index.isin(train.index)]
 
     # dump features
-    train_features.to_csv(output_file_path_train, index=True)
-    test_features.to_csv(output_file_path_test, index=True)
+    train.to_csv(output_file_path_train, index=True)
+    test.to_csv(output_file_path_test, index=True)
 
-    return train_features, test_features
+    return train, test

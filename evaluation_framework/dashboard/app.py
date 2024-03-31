@@ -1,3 +1,4 @@
+from flask import Flask
 from dash import Dash, Input, Output, callback
 import dash_bootstrap_components as dbc
 import json
@@ -114,7 +115,9 @@ boxplots = [
 ]
 
 
-app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
+server = Flask(__name__)
+app = Dash(server=server, external_stylesheets=[dbc.themes.BOOTSTRAP])
+app.title = "Model Diagnostics"
 
 
 # prepare CSS
@@ -146,4 +149,4 @@ def display_selected_node_data(data):
     return json.dumps(data, indent=2)
 
 
-app.run(debug=False)
+app.run_server(debug=False)

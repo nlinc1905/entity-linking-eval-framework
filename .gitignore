@@ -173,5 +173,8 @@ mlruns/
 *.json
 *.png
 
+# Misc
+evaluation_framework/eval_data/plots/*.html
+
 # README images
 !*/static/*.png
